@@ -26,6 +26,7 @@ class FakeUserRepository(
         private set
     var createdEmail: String? = null
         private set
+    val deletedIds = mutableListOf<Long>()
 
     override suspend fun getUsers(): UsersResult {
         getUsersCalls++
@@ -41,8 +42,10 @@ class FakeUserRepository(
         )
     }
 
-    override suspend fun deleteUser(id: Long): HttpResponse =
-        respondWith(HttpStatusCode.NoContent, "")
+    override suspend fun deleteUser(id: Long): HttpResponse {
+        deletedIds.add(id)
+        return respondWith(HttpStatusCode.NoContent, "")
+    }
 
     private suspend fun respondWith(status: HttpStatusCode, body: String): HttpResponse {
         val engine = MockEngine {
