@@ -13,7 +13,19 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
-fun createHttpClient(engine: HttpClientEngine): HttpClient = HttpClient(engine) {
+/**
+ * Builds the shared Ktor client.
+ *
+ * The access token is injected rather than compiled in, so no credential lives in source control.
+ * Logging defaults to [LogLevel.NONE]: full request/response logging would leak the Authorization
+ * header and user PII, so verbose levels must be opted into explicitly for local debugging only and
+ * never for a shipped build.
+ */
+fun createHttpClient(
+    engine: HttpClientEngine,
+    authToken: String,
+    logLevel: LogLevel = LogLevel.NONE
+): HttpClient = HttpClient(engine) {
     install(ContentNegotiation) {
         json(
             Json {
@@ -21,17 +33,20 @@ fun createHttpClient(engine: HttpClientEngine): HttpClient = HttpClient(engine) 
             }
         )
     }
-    install(Logging) {
-        logger = object : Logger {
-            override fun log(message: String) {
-                println("HTTP: $message")
+    if (logLevel != LogLevel.NONE) {
+        install(Logging) {
+            logger = object : Logger {
+                override fun log(message: String) {
+                    println("HTTP: $message")
+                }
             }
+            level = logLevel
         }
-        // full request/response logging for easier debugging
-        level = LogLevel.ALL
     }
     defaultRequest {
-        header("Authorization", "Bearer ${ApiConfig.API_TOKEN}")
+        if (authToken.isNotEmpty()) {
+            header("Authorization", "Bearer $authToken")
+        }
         contentType(ContentType.Application.Json)
     }
 }

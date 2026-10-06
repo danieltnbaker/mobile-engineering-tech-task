@@ -43,7 +43,7 @@ class UserRepositoryImplTest {
     @Test
     fun `returns users from the last page`() = runTest {
         val repository = UserRepositoryImpl(
-            GoRestApi(createHttpClient(successEngine())),
+            GoRestApi(createHttpClient(successEngine(), authToken = TEST_TOKEN)),
             FakeLocalDataSource()
         )
 
@@ -56,7 +56,7 @@ class UserRepositoryImplTest {
     @Test
     fun `caches users after a successful fetch`() = runTest {
         val local = FakeLocalDataSource()
-        val repository = UserRepositoryImpl(GoRestApi(createHttpClient(successEngine())), local)
+        val repository = UserRepositoryImpl(GoRestApi(createHttpClient(successEngine(), authToken = TEST_TOKEN)), local)
 
         repository.getUsers()
 
@@ -71,7 +71,7 @@ class UserRepositoryImplTest {
         )
         val engine = MockEngine { respondError(HttpStatusCode.ServiceUnavailable) }
         val repository = UserRepositoryImpl(
-            GoRestApi(createHttpClient(engine)),
+            GoRestApi(createHttpClient(engine, authToken = TEST_TOKEN)),
             FakeLocalDataSource(cached)
         )
 
@@ -85,5 +85,9 @@ class UserRepositoryImplTest {
     @Test
     fun `uses the public GoRest base url`() {
         assertTrue(ApiConfig.BASE_URL.startsWith("https://"))
+    }
+
+    private companion object {
+        const val TEST_TOKEN = "test-token"
     }
 }
