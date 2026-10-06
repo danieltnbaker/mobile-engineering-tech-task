@@ -80,6 +80,9 @@ Each task states the ticket link, why it matters commercially, effort/risk, and 
   propagated.
 - **Effort/Risk:** Low / Low.
 - **Acceptance:** No credential in source; release build logs no auth header or PII; token rotated.
+- **Residuals (out-of-band):** the code fix removes the secret going forward, but the token still
+  exists in git history and must be rotated at GoRest. Both are tracked with step-by-step plans in
+  `FOLLOW_UP_ACTIONS.md` (FU-1 history purge, FU-2 credential rotation, FU-3 CI secret-scan gate).
 
 ### P0-3 · Relative times must be genuinely shared, not divergent per-platform
 - **Files:** `domain/.../time/RelativeTimeFormatter.kt` (`expect`) + `.android.kt` / `.ios.kt`
