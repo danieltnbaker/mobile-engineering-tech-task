@@ -120,6 +120,39 @@ required to meet the ticket; a real rollout needs one.
 
 ---
 
+## FU-5 — Manually confirm add-user on the iOS simulator  ·  OPEN (deferred to last)
+
+**Context.** The add-user write path was fixed and **device-verified end-to-end on Android** (POST
+/users → 201; the created user, GoRest id `8653890`, appeared at the top of the feed). On iOS the app
+builds, installs, launches, and the **feed loads real data**, confirming the shared Ktor networking
+stack and the token-delivery mechanism run on iOS. The add-user *submit* itself was not driven on iOS.
+
+**Why it's not done here, and why it's last:**
+- Driving the iOS Simulator UI (tap the FAB, type, submit) needs synthetic input, which requires macOS
+  **Accessibility permission** for the automating process — not grantable non-interactively — and
+  `simctl` has no tap command. This is an environment/tooling blocker, not an app defect.
+- Verifying the token by scanning the iOS binary was tried and rejected as **invalid for
+  Kotlin/Native**: even `BASE_URL` (a string the working feed demonstrably uses) is not extractable via
+  `strings`, because K/N packs string constants non-contiguously. So binary scans prove nothing here.
+- It is ranked **last** because the residual risk is low and the cost/benefit is poor: the entire
+  add-user flow (`AddUserViewModel`, `createUser`, `provideApiToken`, Ktor client) is **100% shared
+  `commonMain`** with no iOS-specific branch, built with the **same `BuildTokenConfig`** token, and the
+  identical path is already green on Android. There is no iOS-only code for a platform-specific failure
+  to hide in. A single manual tap closes the gap; it does not warrant blocking the other work or
+  investing in a full XCUITest harness for this exercise.
+
+**Plan (one manual check, ~1 min):**
+1. In the running Simulator, tap **+**, enter a name and a distinctive email, tap **Add user**.
+2. Confirm the user appears at the top with "Just now" and no "No internet" message.
+3. Optionally confirm the create landed:
+   `curl -s "https://gorest.co.in/public/v2/users?email=<that-email>" -H "Authorization: Bearer <token>"`.
+
+**Acceptance:** the new user is created (201) and shown at the top of the iOS feed. If a longer-term
+guarantee is wanted, add an XCUITest or a shared UI test so this is covered automatically rather than
+by a manual tap (ties into P1-5 / the CI definition of "green on both platforms").
+
+---
+
 ## Summary
 
 | ID | Action | Status | Blocked on | Order |
@@ -128,6 +161,7 @@ required to meet the ticket; a real rollout needs one.
 | FU-1 | Purge token from git history | OPEN | Owner + force-push approval | 2nd (after FU-2) |
 | FU-3 | CI secret-scan + release-config gate | OPEN | CI exists | Parallel |
 | FU-4 | SQLDelight migration for first_seen_at | OPEN | — | Before next release on existing installs |
+| FU-5 | Manually confirm add-user on iOS simulator | OPEN | Simulator UI automation (Accessibility) | Last — low residual risk; path is 100% shared and Android-verified |
 
 These items were deliberately **not** attempted as code changes because they are destructive to shared
 history, require credentials, or depend on infrastructure outside this repository. Each is actionable
