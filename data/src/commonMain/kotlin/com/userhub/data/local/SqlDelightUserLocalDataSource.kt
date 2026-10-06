@@ -9,6 +9,12 @@ class SqlDelightUserLocalDataSource(database: UserDatabase) : UserLocalDataSourc
 
     override fun saveUsers(users: List<UserDto>, timestamp: Long) {
         queries.transaction {
+            // Preserve each user's earliest first_seen_at across refreshes. The dialect (SQLite 3.18)
+            // has no UPSERT, so we compute the preserved value in Kotlin: existing users keep their
+            // original first-seen time; newly observed users get `timestamp`. This keeps the "added"
+            // time a real observation time rather than something synthesised from the list position.
+            val existingFirstSeen = queries.selectAll().executeAsList()
+                .associate { it.id to it.first_seen_at }
             queries.clearAll()
             users.forEach { user ->
                 queries.insertUser(
@@ -17,7 +23,8 @@ class SqlDelightUserLocalDataSource(database: UserDatabase) : UserLocalDataSourc
                     email = user.email,
                     gender = user.gender,
                     status = user.status,
-                    cached_at = timestamp
+                    cached_at = timestamp,
+                    first_seen_at = existingFirstSeen[user.id] ?: timestamp
                 )
             }
         }
@@ -33,7 +40,8 @@ class SqlDelightUserLocalDataSource(database: UserDatabase) : UserLocalDataSourc
                     gender = row.gender,
                     status = row.status
                 ),
-                cachedAt = row.cached_at
+                cachedAt = row.cached_at,
+                firstSeenAt = row.first_seen_at
             )
         }
 }

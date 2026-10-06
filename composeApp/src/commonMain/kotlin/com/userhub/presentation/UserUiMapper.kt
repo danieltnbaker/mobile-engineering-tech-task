@@ -1,16 +1,21 @@
 package com.userhub.presentation
 
 import com.userhub.data.remote.UserDto
+import com.userhub.data.repository.FeedUser
 import com.userhub.domain.time.TimeProvider
 import com.userhub.domain.time.formatRelativeTime
 
-private const val FEED_STAGGER_MILLIS = 5 * 60 * 1_000L
-
-fun List<UserDto>.toUiModels(): List<UserUiModel> {
+/**
+ * Maps feed users to UI models. The "added" label is derived from the real first-seen time supplied
+ * by the repository — never synthesised from the list index (MOB-247 Scope 1).
+ */
+fun List<FeedUser>.toUiModels(): List<UserUiModel> {
     val now = TimeProvider.nowEpochMillis()
-    return mapIndexed { index, user ->
-        val addedAt = now - index * FEED_STAGGER_MILLIS
-        UserUiModel(user = user, createdLabel = formatRelativeTime(addedAt, now))
+    return map { feedUser ->
+        UserUiModel(
+            user = feedUser.user,
+            createdLabel = formatRelativeTime(feedUser.firstSeenMillis, now)
+        )
     }
 }
 

@@ -4,12 +4,13 @@ CREATE TABLE user_cache (
     email TEXT NOT NULL,
     gender TEXT NOT NULL,
     status TEXT NOT NULL,
-    cached_at INTEGER NOT NULL
+    cached_at INTEGER NOT NULL,
+    first_seen_at INTEGER NOT NULL
 );
 
 insertUser:
-INSERT OR REPLACE INTO user_cache(id, name, email, gender, status, cached_at)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO user_cache(id, name, email, gender, status, cached_at, first_seen_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 clearAll:
 DELETE FROM user_cache;

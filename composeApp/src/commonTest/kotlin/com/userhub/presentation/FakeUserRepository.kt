@@ -1,6 +1,7 @@
 package com.userhub.presentation
 
 import com.userhub.data.remote.UserDto
+import com.userhub.data.repository.FeedUser
 import com.userhub.data.repository.UserRepository
 import com.userhub.data.repository.UsersResult
 import io.ktor.client.HttpClient
@@ -30,7 +31,10 @@ class FakeUserRepository(
 
     override suspend fun getUsers(): UsersResult {
         getUsersCalls++
-        return UsersResult.Success(users, lastSyncMillis = null)
+        return UsersResult.Success(
+            users.map { FeedUser(user = it, firstSeenMillis = 1_700_000_000_000L) },
+            lastSyncMillis = null
+        )
     }
 
     override suspend fun createUser(name: String, email: String): HttpResponse {

@@ -67,7 +67,11 @@ class UserRepositoryImplTest {
     @Test
     fun `falls back to cached users when the network fails`() = runTest {
         val cached = listOf(
-            CachedUser(UserDto(7, "Cached User", "cached@example.com", "male", "active"), 1_700_000_000_000L)
+            CachedUser(
+                UserDto(7, "Cached User", "cached@example.com", "male", "active"),
+                cachedAt = 1_700_000_000_000L,
+                firstSeenAt = 1_699_000_000_000L
+            )
         )
         val engine = MockEngine { respondError(HttpStatusCode.ServiceUnavailable) }
         val repository = UserRepositoryImpl(
@@ -78,8 +82,37 @@ class UserRepositoryImplTest {
         val result = repository.getUsers()
 
         assertIs<UsersResult.Success>(result)
-        assertEquals("cached@example.com", result.users.single().email)
+        assertEquals("cached@example.com", result.users.single().user.email)
         assertEquals(1_700_000_000_000L, result.lastSyncMillis)
+    }
+
+    @Test
+    fun `added time comes from the persisted first-seen value, not the list index`() = runTest {
+        // Pre-seed a real first-seen time for user 2 that differs from any index-based guess.
+        val realFirstSeen = 1_650_000_000_000L
+        val local = FakeLocalDataSource(
+            listOf(
+                CachedUser(
+                    UserDto(2, "Alan Turing", "alan@example.com", "male", "active"),
+                    cachedAt = realFirstSeen,
+                    firstSeenAt = realFirstSeen
+                )
+            )
+        )
+        val repository = UserRepositoryImpl(
+            GoRestApi(createHttpClient(successEngine(), authToken = TEST_TOKEN)),
+            local
+        )
+
+        val result = repository.getUsers()
+
+        assertIs<UsersResult.Success>(result)
+        // User 2 keeps its real first-seen time; it is not re-derived from its position in the list.
+        val alan = result.users.single { it.user.id == 2L }
+        assertEquals(realFirstSeen, alan.firstSeenMillis)
+        // A newly observed user (id 1) gets a real "now-ish" first-seen, not an index offset.
+        val ada = result.users.single { it.user.id == 1L }
+        assertTrue(ada.firstSeenMillis >= realFirstSeen)
     }
 
     @Test

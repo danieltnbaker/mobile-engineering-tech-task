@@ -16,16 +16,22 @@ class UserRepositoryImpl(
     override suspend fun getUsers(): UsersResult = withContext(Dispatchers.Default) {
         try {
             val users = api.fetchLastPageUsers().reversed()
-            // persist for offline support
+            // Persist for offline support; the local store assigns/preserves each user's first-seen
+            // time, which we then read back as the authoritative "added" time (never synthesised).
             localDataSource.saveUsers(users, currentTimeMillis())
-            UsersResult.Success(users, lastSyncMillis = null)
+            val firstSeenById = localDataSource.getUsers().associate { it.user.id to it.firstSeenAt }
+            val feed = users.map { user ->
+                FeedUser(user = user, firstSeenMillis = firstSeenById[user.id] ?: currentTimeMillis())
+            }
+            UsersResult.Success(feed, lastSyncMillis = null)
         } catch (e: Exception) {
             val cached = localDataSource.getUsers()
-            val lastSync = cached.maxOf { it.cachedAt }
             if (cached.isEmpty()) {
                 UsersResult.NoInternet
             } else {
-                UsersResult.Success(cached.map { it.user }, lastSyncMillis = lastSync)
+                val lastSync = cached.maxOf { it.cachedAt }
+                val feed = cached.map { FeedUser(user = it.user, firstSeenMillis = it.firstSeenAt) }
+                UsersResult.Success(feed, lastSyncMillis = lastSync)
             }
         }
     }

@@ -13,7 +13,14 @@ class FakeLocalDataSource(initial: List<CachedUser> = emptyList()) : UserLocalDa
 
     override fun saveUsers(users: List<UserDto>, timestamp: Long) {
         savedUsers = users
-        stored = users.map { CachedUser(it, timestamp) }.toMutableList()
+        val existingFirstSeen = stored.associate { it.user.id to it.firstSeenAt }
+        stored = users.map { user ->
+            CachedUser(
+                user = user,
+                cachedAt = timestamp,
+                firstSeenAt = existingFirstSeen[user.id] ?: timestamp
+            )
+        }.toMutableList()
     }
 
     override fun getUsers(): List<CachedUser> = stored
